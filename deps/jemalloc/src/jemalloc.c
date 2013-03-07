@@ -36,7 +36,10 @@ arena_t			**arenas;
 unsigned		narenas_total;
 unsigned		narenas_auto;
 
-/* Set to true once the allocator has been initialized. */
+/* 
+ * true: 已经初始化.
+ * false: 未初始化.
+ * */
 static bool		malloc_initialized = false;
 
 #ifdef JEMALLOC_THREADED_INIT
@@ -281,6 +284,9 @@ static inline bool
 malloc_init(void)
 {
 
+	/*
+	 * 初始化.
+	 */
 	if (malloc_initialized == false)
 		return (malloc_init_hard());
 
@@ -381,8 +387,7 @@ malloc_conf_init(void)
 	size_t klen, vlen;
 
 	/*
-	 * Automatically configure valgrind before processing options.  The
-	 * valgrind option remains in jemalloc 3.x for compatibility reasons.
+	 * 默认配置config_valgrind:false.
 	 */
 	if (config_valgrind) {
 		opt_valgrind = (RUNNING_ON_VALGRIND != 0) ? true : false;
@@ -639,18 +644,21 @@ malloc_init_hard(void)
 	arena_t *init_arenas[1];
 
 	malloc_mutex_lock(&init_lock);
+	
 	if (malloc_initialized || IS_INITIALIZER) {
 		/*
-		 * Another thread initialized the allocator before this one
-		 * acquired init_lock, or this thread is the initializing
-		 * thread, and it is recursively allocating.
+		 * 另一个线程已经初始化过了,或者本线程是初始化线程,同时它在
+		 * 递归调用分配器.
+		 * 解锁.
 		 */
 		malloc_mutex_unlock(&init_lock);
 		return (false);
 	}
 #ifdef JEMALLOC_THREADED_INIT
 	if (malloc_initializer != NO_INITIALIZER && IS_INITIALIZER == false) {
-		/* Busy-wait until the initializing thread completes. */
+		/*
+		 * 等待其他线程初始化完毕,在此期间,cpu循环等待.
+		 * */
 		do {
 			malloc_mutex_unlock(&init_lock);
 			CPU_SPINWAIT;
@@ -663,6 +671,10 @@ malloc_init_hard(void)
 	malloc_initializer = INITIALIZER;
 
 	malloc_tsd_boot();
+	
+	/*
+	 * 默认配置config_prof:false
+	 */
 	if (config_prof)
 		prof_boot0();
 
@@ -670,7 +682,10 @@ malloc_init_hard(void)
 
 #if (!defined(JEMALLOC_MUTEX_INIT_CB) && !defined(JEMALLOC_ZONE) \
     && !defined(_WIN32))
-	/* Register fork handlers. */
+	/*
+	 * 注册fork前后处理函数,
+	 * 当daemon=yes时,bgsave, bgrewriteaof 等命令被触发时会被调用.
+	 * */
 	if (pthread_atfork(jemalloc_prefork, jemalloc_postfork_parent,
 	    jemalloc_postfork_child) != 0) {
 		malloc_write("<jemalloc>: Error in pthread_atfork()\n");
@@ -680,7 +695,9 @@ malloc_init_hard(void)
 #endif
 
 	if (opt_stats_print) {
-		/* Print statistics at exit. */
+		/* 
+		 * 程序退出后打印统计信息.
+		 * */
 		if (atexit(stats_print_atexit) != 0) {
 			malloc_write("<jemalloc>: Error in atexit()\n");
 			if (opt_abort)
@@ -688,11 +705,15 @@ malloc_init_hard(void)
 		}
 	}
 
+
 	if (base_boot()) {
 		malloc_mutex_unlock(&init_lock);
 		return (true);
 	}
 
+	/*
+	 * chunk_boot.
+	 */
 	if (chunk_boot()) {
 		malloc_mutex_unlock(&init_lock);
 		return (true);
@@ -706,6 +727,9 @@ malloc_init_hard(void)
 	if (config_prof)
 		prof_boot1();
 
+	/*
+	 * arena_boot.
+	 */
 	arena_boot();
 
 	if (config_tcache && tcache_boot0()) {
@@ -825,6 +849,18 @@ malloc_init_hard(void)
  * Begin malloc(3)-compatible functions.
  */
 
+/*
+ *默认编译下:redis会选择je_malloc作为内存分配器.当然,开发人员可以选择使用glibc
+ *提供的内存分配器 or google提供的tcmalloc分配器,但在这里,只对jemalloc代码做些
+ *注视.
+ *
+ *一般程序员会认为malloc是一个很一般的函数,实际上,不管是glibc的malloc, 还是 
+ *jemalloc or 其他的分配器 都是对系统接口函数brk()(在jemalloc源码中,并没有直接
+ *调用brk,而是调用sbrk,sbrk是glibc对brk的一个封装,同脱man手册,可以了解) mmap2()
+ *的封装,他们内部的数据处理是非常复杂的, doc目录下有些说明文档,可以参考.
+ *
+ * je_malloc() 入口函数.
+ */
 void *
 je_malloc(size_t size)
 {
@@ -832,11 +868,17 @@ je_malloc(size_t size)
 	size_t usize JEMALLOC_CC_SILENCE_INIT(0);
 	prof_thr_cnt_t *cnt JEMALLOC_CC_SILENCE_INIT(NULL);
 
+	/*
+	 * 初始化.
+	 */
 	if (malloc_init()) {
 		ret = NULL;
 		goto label_oom;
 	}
 
+	/*
+	 *初始化完成.
+	 */
 	if (size == 0)
 		size = 1;
 

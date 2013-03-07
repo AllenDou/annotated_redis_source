@@ -64,6 +64,10 @@ tcache_event_hard(tcache_t *tcache)
 	tcache->ev_cnt = 0;
 }
 
+/*
+ * 先分配空间,用tcache的avail来记录.
+ * 分配成功后再用easy方式获取.
+ */
 void *
 tcache_alloc_small_hard(tcache_t *tcache, tcache_bin_t *tbin, size_t binind)
 {

@@ -14,7 +14,7 @@
 
 release_hdr := $(shell sh -c './mkreleasehdr.sh')
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
-OPTIMIZATION?=-O2
+OPTIMIZATION?=-O0
 DEPENDENCY_TARGETS=hiredis linenoise lua
 
 # Default settings
@@ -52,9 +52,9 @@ ifeq ($(uname_S),SunOS)
   DEBUG= -g -ggdb
 else
   FINAL_CFLAGS= $(STD) $(WARN) $(OPT) $(DEBUG) $(CFLAGS) $(REDIS_CFLAGS)
-  FINAL_LDFLAGS= $(LDFLAGS) $(REDIS_LDFLAGS) -g -rdynamic -ggdb
+  FINAL_LDFLAGS= $(LDFLAGS) $(REDIS_LDFLAGS) -g3 -rdynamic -ggdb
   FINAL_LIBS= -lm -pthread
-  DEBUG= -g -rdynamic -ggdb
+  DEBUG= -g3 -rdynamic -ggdb
 endif
 
 # Include paths to dependencies

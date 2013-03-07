@@ -68,6 +68,9 @@ chunk_recycle(extent_tree_t *chunks_szad, extent_tree_t *chunks_ad, size_t size,
 	key.addr = NULL;
 	key.size = alloc_size;
 	malloc_mutex_lock(&chunks_mtx);
+	/*
+	 * 从树中查找符合alloc_size的node.
+	 */
 	node = extent_tree_szad_nsearch(chunks_szad, &key);
 	if (node == NULL) {
 		malloc_mutex_unlock(&chunks_mtx);
@@ -78,11 +81,15 @@ chunk_recycle(extent_tree_t *chunks_szad, extent_tree_t *chunks_ad, size_t size,
 	assert(node->size >= leadsize + size);
 	trailsize = node->size - leadsize - size;
 	ret = (void *)((uintptr_t)node->addr + leadsize);
-	/* Remove node from the tree. */
+	/* 
+	 * 从树中删除node.
+	 */
 	extent_tree_szad_remove(chunks_szad, node);
 	extent_tree_ad_remove(chunks_ad, node);
 	if (leadsize != 0) {
-		/* Insert the leading space as a smaller chunk. */
+		/*
+		 * 把前面leading_size大小的空间当作一个小的chunk插入到树中.
+		 */
 		node->size = leadsize;
 		extent_tree_szad_insert(chunks_szad, node);
 		extent_tree_ad_insert(chunks_ad, node);
@@ -323,7 +330,11 @@ bool
 chunk_boot(void)
 {
 
-	/* Set variables according to the value of opt_lg_chunk. */
+	/*
+	 * opt_lg_chunk = 22.
+	 * so. chunksize: 4M.
+	 */
+
 	chunksize = (ZU(1) << opt_lg_chunk);
 	assert(chunksize >= PAGE);
 	chunksize_mask = chunksize - 1;

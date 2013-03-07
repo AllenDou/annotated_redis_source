@@ -206,6 +206,11 @@ tcache_enabled_set(bool enabled)
 	}
 }
 
+
+/*
+ * 从tsd中tcache_tls获取tcache指针.
+ * 如果没有就创建tsd.
+ */
 JEMALLOC_INLINE tcache_t *
 tcache_get(bool create)
 {
@@ -258,6 +263,10 @@ tcache_get(bool create)
 	return (tcache);
 }
 
+
+/*
+ * tcache event 计数.
+ */
 JEMALLOC_INLINE void
 tcache_event(tcache_t *tcache)
 {
@@ -287,6 +296,10 @@ tcache_alloc_easy(tcache_bin_t *tbin)
 	return (ret);
 }
 
+
+/*
+ * 从tcache指向的tsd分配空间.
+ */
 JEMALLOC_INLINE void *
 tcache_alloc_small(tcache_t *tcache, size_t size, bool zero)
 {
@@ -297,6 +310,9 @@ tcache_alloc_small(tcache_t *tcache, size_t size, bool zero)
 	binind = SMALL_SIZE2BIN(size);
 	assert(binind < NBINS);
 	tbin = &tcache->tbins[binind];
+	/*
+	 * 简单的从tcache的avail中获取空间地址.
+	 */
 	ret = tcache_alloc_easy(tbin);
 	if (ret == NULL) {
 		ret = tcache_alloc_small_hard(tcache, tbin, binind);
