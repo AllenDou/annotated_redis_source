@@ -265,6 +265,8 @@ tcache_arena_dissociate(tcache_t *tcache)
 	}
 }
 
+
+/*创建tcache.*/
 tcache_t *
 tcache_create(arena_t *arena)
 {
@@ -272,10 +274,12 @@ tcache_create(arena_t *arena)
 	size_t size, stack_offset;
 	unsigned i;
 
+	/*计算一个tcache+其内部nhbins(36)个bin的size.*/
 	size = offsetof(tcache_t, tbins) + (sizeof(tcache_bin_t) * nhbins);
-	/* Naturally align the pointer stacks. */
+	/* Naturally align the pointer stacks.对齐. */
 	size = PTR_CEILING(size);
 	stack_offset = size;
+	/*计算每个tbin中每个avail的数组元素个数,计算空间,size累计.*/
 	size += stack_nelms * sizeof(void *);
 	/*
 	 * Round up to the nearest multiple of the cacheline size, in order to
@@ -287,6 +291,7 @@ tcache_create(arena_t *arena)
 	 */
 	size = (size + CACHELINE_MASK) & (-CACHELINE);
 
+	/*根据size大小,为tcache分配空间.*/
 	if (size <= SMALL_MAXCLASS)
 		tcache = (tcache_t *)arena_malloc_small(arena, size, true);
 	else if (size <= tcache_maxclass)
@@ -297,6 +302,7 @@ tcache_create(arena_t *arena)
 	if (tcache == NULL)
 		return (NULL);
 
+	/*将tcache插入arena的链表.*/
 	tcache_arena_associate(tcache, arena);
 
 	assert((TCACHE_NSLOTS_SMALL_MAX & 1U) == 0);
@@ -307,6 +313,7 @@ tcache_create(arena_t *arena)
 		stack_offset += tcache_bin_info[i].ncached_max * sizeof(void *);
 	}
 
+	/*将tcache设置成tls变量.*/
 	tcache_tsd_set(&tcache);
 
 	return (tcache);
