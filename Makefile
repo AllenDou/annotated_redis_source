@@ -3,8 +3,8 @@
 default: all
 
 .DEFAULT:
-	gcc -g3 -O0 main.c deps/jemalloc/lib/libjemalloc.a -pthread -I deps/jemalloc/include -lm
 	cd src && $(MAKE) $@
+	gcc -g3 -O0 main.c deps/jemalloc/lib/libjemalloc.a -pthread -I deps/jemalloc/include -lm
 
 install:
 	cd src && $(MAKE) $@

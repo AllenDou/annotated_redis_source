@@ -311,7 +311,7 @@ tcache_alloc_small(tcache_t *tcache, size_t size, bool zero)
 	assert(binind < NBINS);
 	tbin = &tcache->tbins[binind];
 	/*
-	 * 简单的从tcache的avail中获取空间地址.
+	 * 从tcache的avail剩余空间中分配.
 	 */
 	ret = tcache_alloc_easy(tbin);
 	if (ret == NULL) {
@@ -342,6 +342,7 @@ tcache_alloc_small(tcache_t *tcache, size_t size, bool zero)
 		tbin->tstats.nrequests++;
 	if (config_prof)
 		tcache->prof_accumbytes += arena_bin_info[binind].reg_size;
+	/*tcache 事件计数.*/
 	tcache_event(tcache);
 	return (ret);
 }
